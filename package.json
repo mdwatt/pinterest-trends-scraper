@@ -1,0 +1,16 @@
+{
+  "name": "pinterest-trends-scraper",
+  "version": "1.0.0",
+  "description": "Headless scraper service for Pinterest Trends, deployed on Railway. Called by n8n via HTTP.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "playwright": "^1.46.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
