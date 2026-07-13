@@ -55,13 +55,45 @@ app.get("/trends", checkAuth, async (req, res) => {
     // ---- SELECTOR CONFIG (most likely thing to need updating over time) ----
     // Pinterest doesn't publish a stable API, so this pulls visible trend
     // card text generically rather than relying on one exact class name.
+    //
+    // The broad attribute match below hits elements at every nesting level
+    // (card wrapper, term span, stat badge all have "trend" in an
+    // attribute), so a naive .textContent read swallows sibling/child text
+    // into one blob (e.g. "Fandom Finishing TouchesPopular in Sport and
+    // Beautyworld cup outfit +500%+5"). Fix is two-part: (1) keep only
+    // "leaf" matches -- elements with no matching descendant -- which
+    // eliminates that concatenation structurally; (2) drop known non-term
+    // leaves (table headers, stat-only badges) that survive as clean leaves
+    // in their own right. Part 2 is a heuristic over Pinterest's current
+    // page copy, not a structural guarantee -- if trend terms start
+    // getting dropped, check NOISE_EXACT/STAT_ONLY here first.
     const trends = await page.evaluate(() => {
       const candidates = Array.from(
         document.querySelectorAll('[data-test-id*="trend"], [class*="trend"]')
       );
-      const texts = candidates
-        .map((el) => el.textContent.trim())
-        .filter((t) => t.length > 2 && t.length < 80);
+
+      const leaves = candidates.filter(
+        (el) => !candidates.some((other) => other !== el && el.contains(other))
+      );
+
+      const NOISE_EXACT = new Set([
+        "keywords",
+        "weekly change",
+        "monthly change",
+        "yearly change",
+        "view shopping trends",
+        "view search trends",
+        "view the full list",
+      ]);
+      // Matches stat-only badges: "98%", "300%", "10,000%+", "+500%", "-12% MoM"
+      const STAT_ONLY = /^[+-]?[\d,.]+%?(\s*(mom|yoy|wow))?[+-]?$/i;
+
+      const texts = leaves
+        .map((el) => el.textContent.trim().replace(/\s+/g, " "))
+        .filter((t) => t.length > 2 && t.length < 80)
+        .filter((t) => !NOISE_EXACT.has(t.toLowerCase()))
+        .filter((t) => !STAT_ONLY.test(t));
+
       return Array.from(new Set(texts)).slice(0, 25);
     });
     // -------------------------------------------------------------------
