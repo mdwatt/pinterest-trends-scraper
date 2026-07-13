@@ -81,18 +81,24 @@ app.get("/trends", checkAuth, async (req, res) => {
         "weekly change",
         "monthly change",
         "yearly change",
-        "view shopping trends",
-        "view search trends",
-        "view the full list",
       ]);
       // Matches stat-only badges: "98%", "300%", "10,000%+", "+500%", "-12% MoM"
       const STAT_ONLY = /^[+-]?[\d,.]+%?(\s*(mom|yoy|wow))?[+-]?$/i;
+      // Screen-reader link suffix Pinterest appends to nav/related-search links.
+      const OPENS_NEW_TAB_SUFFIX = /;\s*opens a new tab$/i;
 
       const texts = leaves
-        .map((el) => el.textContent.trim().replace(/\s+/g, " "))
+        .map((el) =>
+          el.textContent
+            .trim()
+            .replace(/\s+/g, " ")
+            .replace(OPENS_NEW_TAB_SUFFIX, "")
+            .trim()
+        )
         .filter((t) => t.length > 2 && t.length < 80)
         .filter((t) => !NOISE_EXACT.has(t.toLowerCase()))
-        .filter((t) => !STAT_ONLY.test(t));
+        .filter((t) => !STAT_ONLY.test(t))
+        .filter((t) => !/^view\s/i.test(t));
 
       return Array.from(new Set(texts)).slice(0, 25);
     });
